@@ -1,0 +1,67 @@
+version: '3.8'
+services:
+    nginx:
+        container_name: server
+        build:
+            context: .
+            dockerfile: ./images/nginx/Dockerfile
+        ports:
+            - "80:80"
+        networks:
+            - kammanet
+        depends_on:
+            - api
+        volumes:
+            - ./api:/var/www/vhosts/api
+    api:
+        container_name: api
+        build:
+            context: .
+            dockerfile: ./api/Dockerfile
+        restart: unless-stopped
+        volumes:
+            - ./api:/var/www/vhosts/api
+        environment:
+            - "DB_PORT=3306"
+            - "DB_HOST=kammaapidb"
+            - "DB_CONNECTION=mysql"
+            - "DB_DATABASE=kamma_db"
+            - "DB_USERNAME=kamma_user"
+            - "DB_PASSWORD=kamma_pass"
+        networks:
+            - kammanet
+    web:
+        container_name: web
+        build:
+            context: .
+            dockerfile: ./web/Dockerfile
+        ports:
+            - 3000:3000
+        networks:
+            - kammanet
+        stdin_open: true
+        volumes:
+            - ./web:/var/www/vhosts/web
+            - /var/www/vhosts/web/node_modules
+    kammaapidb:
+        container_name: kammaapidb
+        build: ./images/mysql
+        volumes:
+            - ./db:/var/lib/mysql
+            - ./images/mysql/conf/mysqld.cnf:/etc/mysql/mysqld.cnf:cached
+        environment:
+            - "MYSQL_DATABASE=kamma_db"
+            - "MYSQL_USER=kamma_user"
+            - "MYSQL_PASSWORD=kamma_pass"
+            - "MYSQL_ROOT_PASSWORD=kamma_pass"
+        ports:
+            - "33065:3306"
+        networks:
+            - kammanet
+networks:
+    kammanet:
+        driver: bridge
+        ipam:
+            driver: default
+            config:
+                - subnet: "172.168.1.0/24"
